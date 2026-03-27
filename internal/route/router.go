@@ -61,20 +61,17 @@ func (r *Router) Match(domain string, ip net.IP) string {
 }
 
 func (r *Router) matchRule(rule *config.Rule, domain string, ip net.IP) bool {
-	switch strings.TrimPrefix(rule.Type, "DOMAIN-") {
-	case "DOMAIN":
-		return strings.EqualFold(domain, rule.Pattern)
+	// Normalize rule type
+	ruleType := strings.ToLower(rule.Type)
+	
+	switch ruleType {
 	case "domain":
 		return strings.EqualFold(domain, rule.Pattern)
-	case "SUFFIX":
+	case "domain-suffix", "domain_suffix":
 		return strings.HasSuffix(strings.ToLower(domain), strings.ToLower(rule.Pattern))
-	case "domain-suffix":
-		return strings.HasSuffix(strings.ToLower(domain), strings.ToLower(rule.Pattern))
-	case "KEYWORD":
+	case "domain-keyword", "domain_keyword":
 		return strings.Contains(strings.ToLower(domain), strings.ToLower(rule.Pattern))
-	case "domain-keyword":
-		return strings.Contains(strings.ToLower(domain), strings.ToLower(rule.Pattern))
-	case "IP-CIDR":
+	case "ip-cidr", "ip_cidr":
 		if ip == nil {
 			return false
 		}
@@ -83,7 +80,7 @@ func (r *Router) matchRule(rule *config.Rule, domain string, ip net.IP) bool {
 			return false
 		}
 		return cidrNet.Contains(ip)
-	case "ip-cidr":
+	case "ip-cidr6", "ip_cidr6":
 		if ip == nil {
 			return false
 		}
@@ -92,55 +89,35 @@ func (r *Router) matchRule(rule *config.Rule, domain string, ip net.IP) bool {
 			return false
 		}
 		return cidrNet.Contains(ip)
-	case "IP-CIDR6":
-		if ip == nil {
-			return false
-		}
-		_, cidrNet, err := net.ParseCIDR(rule.Pattern)
-		if err != nil {
-			return false
-		}
-		return cidrNet.Contains(ip)
-	case "ip-cidr6":
-		if ip == nil {
-			return false
-		}
-		_, cidrNet, err := net.ParseCIDR(rule.Pattern)
-		if err != nil {
-			return false
-		}
-		return cidrNet.Contains(ip)
-	case "GEOIP":
+	case "geoip":
 		// TODO: implement GeoIP matching, currently not supported
 		// Return false to match next rule
 		return false
-	case "SRC-IP-CIDR":
+	case "src-ip-cidr":
 		// Source IP matching, not applicable here
 		return false
-	case "DST-PORT":
+	case "dst-port":
 		// Destination port matching, not applicable here
 		return false
-	case "SRC-PORT":
+	case "src-port":
 		// Source port matching, not applicable here
 		return false
-	case "PROCESS-NAME":
+	case "process-name":
 		// Process name matching, not applicable here
 		return false
-	case "PROCESS-PATH":
+	case "process-path":
 		// Process path matching, not applicable here
 		return false
 	default:
-		// Handle other formats by case insensitive matching
-		lowerType := strings.ToLower(rule.Type)
-		lowerPattern := strings.ToLower(rule.Pattern)
-		switch lowerType {
+		// Handle uppercase Clash format (DOMAIN, DOMAIN-SUFFIX, etc.)
+		switch strings.ToLower(rule.Type) {
 		case "domain":
 			return strings.EqualFold(domain, rule.Pattern)
-		case "domain_suffix", "suffix":
-			return strings.HasSuffix(strings.ToLower(domain), lowerPattern)
-		case "domain_keyword", "keyword":
-			return strings.Contains(strings.ToLower(domain), lowerPattern)
-		case "ip_cidr", "cidr":
+		case "domain-suffix", "domain_suffix", "suffix":
+			return strings.HasSuffix(strings.ToLower(domain), strings.ToLower(rule.Pattern))
+		case "domain-keyword", "domain_keyword", "keyword":
+			return strings.Contains(strings.ToLower(domain), strings.ToLower(rule.Pattern))
+		case "ip-cidr", "ip_cidr", "cidr":
 			if ip == nil {
 				return false
 			}

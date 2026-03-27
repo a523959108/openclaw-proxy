@@ -283,9 +283,10 @@ func (s *Selector) GroupByRegion() map[string][]*config.Node {
 	nodes := s.subManager.GetAllNodes()
 
 	for _, node := range nodes {
-	// TODO: implement IP geolocation
-	region := detectRegion(node.Server)
-	groups[region] = append(groups[region], node)
+		// TODO: implement IP geolocation
+		region := detectRegion(node.Server)
+		groups[region] = append(groups[region], node)
+	}
 	return groups
 }
 

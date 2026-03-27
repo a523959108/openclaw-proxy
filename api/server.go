@@ -100,7 +100,6 @@ func (s *Server) setupRoutes() {
 		r.Get("/stats/nodes", s.GetNodeStats)
 		r.Post("/stats/reset", s.ResetStats)
 	})
-	})
 
 	// Web UI
 	s.router.Handle("/*", http.FileServer(http.Dir("./web")))

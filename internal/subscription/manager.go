@@ -19,6 +19,7 @@ import (
 type Manager struct {
 	config *config.Config
 	cancel context.CancelFunc
+	mu     sync.Mutex
 }
 
 // NewManager creates a new subscription manager
@@ -90,6 +91,9 @@ func (m *Manager) StartAutoUpdate(ctx context.Context) {
 	if m.config.SubscriptionUpdateInterval <= 0 {
 		return // disabled
 	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
 	interval := time.Duration(m.config.SubscriptionUpdateInterval) * time.Hour
 	ticker := time.NewTicker(interval)
 	var updateCtx context.Context
