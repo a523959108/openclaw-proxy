@@ -1,0 +1,48 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.21'
+        cache: true
+
+    - name: Build Linux amd64
+      run: |
+        CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o openclaw-proxy-linux-amd64 ./cmd/
+
+    - name: Build Linux arm64
+      run: |
+        CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -ldflags="-s -w" -o openclaw-proxy-linux-arm64 ./cmd/
+
+    - name: Build macOS amd64
+      run: |
+        CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w" -o openclaw-proxy-darwin-amd64 ./cmd/
+
+    - name: Build macOS arm64 (Apple Silicon)
+      run: |
+        CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" -o openclaw-proxy-darwin-arm64 ./cmd/
+
+    - name: Upload release assets
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          openclaw-proxy-linux-amd64
+          openclaw-proxy-linux-arm64
+          openclaw-proxy-darwin-amd64
+          openclaw-proxy-darwin-arm64
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
