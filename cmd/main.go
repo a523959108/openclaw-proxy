@@ -6,7 +6,6 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"github.com/a523959108/openclaw-proxy/internal/config"
 	"github.com/a523959108/openclaw-proxy/internal/dns"
