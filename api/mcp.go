@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"openclaw-mcp/internal/config"
-	"openclaw-mcp/internal/selection"
+	"github.com/a523959108/openclaw-proxy/internal/config"
+	"github.com/a523959108/openclaw-proxy/internal/selection"
 )
 
 // MCP is the Module Control Protocol interface for openclaw integration

@@ -7,10 +7,10 @@ import (
 	"sync"
 	"time"
 
-	"openclaw-mcp/internal/config"
-	"openclaw-mcp/internal/dns"
-	"openclaw-mcp/internal/lighthouse"
-	"openclaw-mcp/internal/subscription"
+	"github.com/a523959108/openclaw-proxy/internal/config"
+	"github.com/a523959108/openclaw-proxy/internal/dns"
+	"github.com/a523959108/openclaw-proxy/internal/lighthouse"
+	"github.com/a523959108/openclaw-proxy/internal/subscription"
 )
 
 // Selector handles automatic node selection

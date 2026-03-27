@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"openclaw-mcp/internal/config"
+	"github.com/a523959108/openclaw-proxy/internal/config"
 )
 
 // Manager handles subscription management

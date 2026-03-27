@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"openclaw-mcp/internal/config"
+	"github.com/a523959108/openclaw-proxy/internal/config"
 )
 
 // SelectionStrategy defines different node selection strategies

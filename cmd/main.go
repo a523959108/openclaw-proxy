@@ -8,13 +8,13 @@ import (
 	"syscall"
 	"time"
 
-	"openclaw-mcp/internal/config"
-	"openclaw-mcp/internal/dns"
-	"openclaw-mcp/internal/subscription"
-	"openclaw-mcp/internal/lighthouse"
-	"openclaw-mcp/internal/selection"
-	"openclaw-mcp/internal/stats"
-	"openclaw-mcp/api"
+	"github.com/a523959108/openclaw-proxy/internal/config"
+	"github.com/a523959108/openclaw-proxy/internal/dns"
+	"github.com/a523959108/openclaw-proxy/internal/subscription"
+	"github.com/a523959108/openclaw-proxy/internal/lighthouse"
+	"github.com/a523959108/openclaw-proxy/internal/selection"
+	"github.com/a523959108/openclaw-proxy/internal/stats"
+	"github.com/a523959108/openclaw-proxy/api"
 )
 
 func main() {

@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"openclaw-mcp/internal/config"
+	"github.com/a523959108/openclaw-proxy/internal/config"
 )
 
 // Lighthouse handles latency testing

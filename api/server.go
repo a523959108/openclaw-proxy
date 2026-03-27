@@ -5,12 +5,12 @@ import (
 	"net/http"
 	"strconv"
 
-	"openclaw-mcp/internal/config"
-	"openclaw-mcp/internal/dns"
-	"openclaw-mcp/internal/lighthouse"
-	"openclaw-mcp/internal/selection"
-	"openclaw-mcp/internal/stats"
-	"openclaw-mcp/internal/subscription"
+	"github.com/a523959108/openclaw-proxy/internal/config"
+	"github.com/a523959108/openclaw-proxy/internal/dns"
+	"github.com/a523959108/openclaw-proxy/internal/lighthouse"
+	"github.com/a523959108/openclaw-proxy/internal/selection"
+	"github.com/a523959108/openclaw-proxy/internal/stats"
+	"github.com/a523959108/openclaw-proxy/internal/subscription"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
