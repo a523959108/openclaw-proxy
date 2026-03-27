@@ -6,8 +6,10 @@ import (
 	"strconv"
 
 	"openclaw-mcp/internal/config"
+	"openclaw-mcp/internal/dns"
 	"openclaw-mcp/internal/lighthouse"
 	"openclaw-mcp/internal/selection"
+	"openclaw-mcp/internal/stats"
 	"openclaw-mcp/internal/subscription"
 
 	"github.com/go-chi/chi/v5"
@@ -20,6 +22,8 @@ type Server struct {
 	subManager *subscription.Manager
 	selector   *selection.Selector
 	lighthouse *lighthouse.Lighthouse
+	dnsResolver *dns.Resolver
+	statsCollector *stats.StatsCollector
 	router     *chi.Mux
 }
 
@@ -29,13 +33,17 @@ func NewServer(
 	sm *subscription.Manager,
 	s *selection.Selector,
 	lh *lighthouse.Lighthouse,
+	dr *dns.Resolver,
+	sc *stats.StatsCollector,
 ) *Server {
 	srv := &Server{
-		config:     cfg,
-		subManager: sm,
-		selector:   s,
-		lighthouse: lh,
-		router:     chi.NewRouter(),
+		config:         cfg,
+		subManager:     sm,
+		selector:       s,
+		lighthouse:     lh,
+		dnsResolver:    dr,
+		statsCollector: sc,
+		router:         chi.NewRouter(),
 	}
 
 	srv.setupRoutes()
@@ -86,11 +94,24 @@ func (s *Server) setupRoutes() {
 		r.Get("/groups", s.GetGroups)
 		r.Post("/groups", s.CreateGroup)
 		r.Post("/groups/{name}/select", s.SelectGroupNode)
+
+		// Statistics
+		r.Get("/stats", s.GetStats)
+		r.Get("/stats/nodes", s.GetNodeStats)
+		r.Post("/stats/reset", s.ResetStats)
+	})
 	})
 
 	// Web UI
 	s.router.Handle("/*", http.FileServer(http.Dir("./web")))
-}
+
+	// MCP endpoints for openclaw
+	s.router.Route("/mcp", func(r chi.Router) {
+		mcpServer := NewMCPServer(s.selector)
+		r.Get("/current", mcpServer.GetCurrentNode)
+		r.Get("/status", mcpServer.Status)
+	})
+})
 
 // Start starts the server
 func (s *Server) Start() error {
@@ -224,4 +245,22 @@ func (s *Server) SelectGroupNode(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	json.NewEncoder(w).Encode(node)
+}
+
+// GetStats returns overall connection statistics
+func (s *Server) GetStats(w http.ResponseWriter, r *http.Request) {
+	stats := s.statsCollector.GetStats()
+	json.NewEncoder(w).Encode(stats)
+}
+
+// GetNodeStats returns statistics per node
+func (s *Server) GetNodeStats(w http.ResponseWriter, r *http.Request) {
+	nodeStats := s.statsCollector.GetNodeStats()
+	json.NewEncoder(w).Encode(nodeStats)
+}
+
+// ResetStats resets all statistics
+func (s *Server) ResetStats(w http.ResponseWriter, r *http.Request) {
+	s.statsCollector.ResetStats()
+	w.WriteHeader(http.StatusOK)
 }

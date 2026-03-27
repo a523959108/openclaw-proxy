@@ -46,6 +46,7 @@ type Config struct {
 	Subscriptions      []*Subscription `json:"subscriptions" yaml:"subscriptions"`
 	Groups             []*Group        `json:"groups" yaml:"groups"`
 	Rules              []*Rule         `json:"rules" yaml:"rules"`
+	RuleStrings        []string        `json:"rule_strings,omitempty" yaml:"rule_strings,omitempty"` // Clash-format rules (type,pattern,target)
 	EnableAuth         bool            `json:"enable_auth" yaml:"enable_auth"`
 	Username           string          `json:"username" yaml:"username"`
 	Password           string          `json:"password" yaml:"password"`
@@ -53,9 +54,20 @@ type Config struct {
 	AutoSelectInterval int             `json:"auto_select_interval" yaml:"auto_select_interval"` // 单位分钟
 	SubscriptionUpdateInterval int    `json:"subscription_update_interval" yaml:"subscription_update_interval"` // 单位小时
 	SelectedGroup      string          `json:"selected_group" yaml:"selected_group"`
+	SelectionStrategy  string          `json:"selection_strategy" yaml:"selection_strategy"` // Selection strategy: latency, round-robin, least-connections, failover, random
 	EnableHTTPS        bool            `json:"enable_https" yaml:"enable_https"`
 	CertFile           string          `json:"cert_file" yaml:"cert_file"`
 	KeyFile            string          `json:"key_file" yaml:"key_file"`
+	DNS                *DNSConfig      `json:"dns,omitempty" yaml:"dns,omitempty"` // DNS configuration for anti-pollution
+}
+
+// DNSConfig DNS resolver configuration
+type DNSConfig struct {
+	Enable          bool     `json:"enable" yaml:"enable"`                 // Enable DNS anti-pollution
+	TrustedDNS      []string `json:"trusted_dns" yaml:"trusted_dns"`       // List of trusted DNS servers
+	CacheTTL        int      `json:"cache_ttl" yaml:"cache_ttl"`           // Cache TTL in minutes
+	Timeout         int      `json:"timeout" yaml:"timeout"`               // Query timeout in seconds
+	CheckPollution  bool     `json:"check_pollution" yaml:"check_pollution"` // Check if resolved IP is polluted
 }
 
 // Rule 分流规则

@@ -1,6 +1,7 @@
 package subscription
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -17,6 +18,7 @@ import (
 // Manager handles subscription management
 type Manager struct {
 	config *config.Config
+	cancel context.CancelFunc
 }
 
 // NewManager creates a new subscription manager
@@ -90,10 +92,12 @@ func (m *Manager) StartAutoUpdate(ctx context.Context) {
 	}
 	interval := time.Duration(m.config.SubscriptionUpdateInterval) * time.Hour
 	ticker := time.NewTicker(interval)
+	var updateCtx context.Context
+	updateCtx, m.cancel = context.WithCancel(ctx)
 	go func() {
 		for {
 			select {
-			case <-ctx.Done():
+			case <-updateCtx.Done():
 				ticker.Stop()
 				return
 			case <-ticker.C:
@@ -101,6 +105,13 @@ func (m *Manager) StartAutoUpdate(ctx context.Context) {
 			}
 		}
 	}()
+}
+
+// StopAutoUpdate stops automatic subscription update
+func (m *Manager) StopAutoUpdate() {
+	if m.cancel != nil {
+		m.cancel()
+	}
 }
 
 // RemoveSubscription removes a subscription

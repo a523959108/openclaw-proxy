@@ -13,6 +13,7 @@ func DefaultConfig() *Config {
 		Subscriptions:              []*Subscription{},
 		Groups:                     []*Group{},
 		Rules:                      []*Rule{},
+		RuleStrings:                []string{},
 		EnableAuth:                 false,
 		Username:                   "admin",
 		Password:                   "admin",
@@ -20,7 +21,15 @@ func DefaultConfig() *Config {
 		AutoSelectInterval:         30, // 30 minutes
 		SubscriptionUpdateInterval: 24, // 24 hours
 		SelectedGroup:              "auto",
+		SelectionStrategy:          "latency", // default to latency-based selection
 		EnableHTTPS:                false,
+		DNS: &DNSConfig{
+			Enable:          false,
+			TrustedDNS:      []string{"8.8.8.8:53", "1.1.1.1:53"},
+			CacheTTL:        30,
+			Timeout:         5,
+			CheckPollution:  true,
+		},
 	}
 }
 
