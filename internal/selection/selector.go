@@ -254,11 +254,6 @@ func (s *Selector) GetAllGroups() []*config.Group {
 	return groups
 }
 
-// SelectBestForGroup selects and sets current node for a group
-func (s *Selector) SelectBestForGroup(groupName string) *config.Node {
-	return s.GetBestNodeForGroup(groupName)
-}
-
 // CountAvailableNodes counts all available nodes
 func (s *Selector) CountAvailableNodes() int {
 	nodes := s.subManager.GetAllNodes()
