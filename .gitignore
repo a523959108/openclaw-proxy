@@ -1,0 +1,26 @@
+# Binaries
+openclaw-mcp
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Configuration
+config.yaml
+*.env
+.env
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Go
+*.test
+*.prof

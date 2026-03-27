@@ -1,0 +1,93 @@
+package lighthouse
+
+import (
+	"context"
+	"fmt"
+	"net"
+	"sync"
+	"time"
+
+	"openclaw-mcp/internal/config"
+)
+
+// Lighthouse handles latency testing
+type Lighthouse struct {
+	config    *config.Config
+	cancelCtx context.CancelFunc
+	ctx       context.Context
+	wg        sync.WaitGroup
+	testURL   string
+	timeout   time.Duration
+}
+
+// New creates a new lighthouse service
+func New(cfg *config.Config) *Lighthouse {
+	ctx, cancel := context.WithCancel(context.Background())
+	return &Lighthouse{
+		config:  cfg,
+		ctx:     ctx,
+		cancelCtx: cancel,
+		testURL: "http://www.gstatic.com/generate_204",
+		timeout: 10 * time.Second,
+	}
+}
+
+// Start starts automatic latency testing
+func (l *Lighthouse) Start() {
+	// TODO: implement periodic testing
+}
+
+// Stop stops the service
+func (l *Lighthouse) Stop() {
+	l.cancelCtx()
+	l.wg.Wait()
+}
+
+// TestNode tests a single node's latency
+func (l *Lighthouse) TestNode(node *config.Node) (int64, error) {
+	start := time.Now()
+
+	// TODO: implement proper connection test through the proxy
+	dialer := &net.Dialer{
+		Timeout: l.timeout,
+	}
+	conn, err := dialer.Dial("tcp", fmt.Sprintf("%s:%d", node.Server, node.Port))
+	if err != nil {
+		node.Available = false
+		node.Latency = -1
+		return -1, err
+	}
+	defer conn.Close()
+
+	latency := time.Since(start).Milliseconds()
+	node.Latency = latency
+	node.Available = true
+	node.LastCheck = time.Now()
+
+	return latency, nil
+}
+
+// TestAll tests all nodes
+func (l *Lighthouse) TestAll(nodes []*config.Node) {
+	var wg sync.WaitGroup
+	semaphore := make(chan struct{}, 10) // Limit concurrent tests
+
+	for _, node := range nodes {
+		wg.Add(1)
+		go func(n *config.Node) {
+			defer wg.Done()
+			semaphore <- struct{}{}
+			defer func() { <-semaphore }()
+
+			select {
+			case <-l.ctx.Done():
+				return
+			default:
+			}
+
+			l.TestNode(n)
+		}(node)
+	}
+
+	wg.Wait()
+}
