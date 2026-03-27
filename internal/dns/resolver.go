@@ -2,7 +2,6 @@ package dns
 
 import (
 	"context"
-	"encoding/binary"
 	"net"
 	"sync"
 	"time"
