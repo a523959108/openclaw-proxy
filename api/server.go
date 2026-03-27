@@ -110,7 +110,7 @@ func (s *Server) setupRoutes() {
 		r.Get("/current", mcpServer.GetCurrentNode)
 		r.Get("/status", mcpServer.Status)
 	})
-})
+}
 
 // Start starts the server
 func (s *Server) Start() error {

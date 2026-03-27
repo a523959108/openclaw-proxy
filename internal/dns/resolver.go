@@ -161,8 +161,10 @@ func (r *Resolver) parallelLookup(domain string) ([]net.IP, error) {
 		}(dnsServer)
 	}
 
-	// Return the first successful result
+	// Return the first successful result with overall timeout
 	var lastErr error
+	timeout := time.After(r.timeout)
+	
 	for i := 0; i < len(r.trustedDNS); i++ {
 		select {
 		case res := <-resultChan:
@@ -175,8 +177,8 @@ func (r *Resolver) parallelLookup(domain string) ([]net.IP, error) {
 			}
 		case <-r.ctx.Done():
 			return nil, context.Canceled
-		case <-time.After(r.timeout):
-			continue
+		case <-timeout:
+			return nil, context.DeadlineExceeded
 		}
 	}
 
