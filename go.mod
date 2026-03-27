@@ -1,4 +1,4 @@
-module github.com/yourusername/openclaw-mcp
+module github.com/a523959108/openclaw-proxy
 
 go 1.21
 
