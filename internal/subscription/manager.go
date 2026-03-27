@@ -28,23 +28,26 @@ func NewManager(cfg *config.Config) *Manager {
 
 // UpdateAll updates all subscriptions
 func (m *Manager) UpdateAll() error {
+	var lastErr error
 	for _, sub := range m.config.Subscriptions {
 		if !sub.Enabled {
 			continue
 		}
 		if err := m.Update(sub); err != nil {
-			return err
+			lastErr = err
+			// Continue updating other subscriptions even if one fails
 		}
 	}
-	return nil
+	return lastErr
+}
+
+var globalHTTPClient = &http.Client{
+	Timeout: 30 * time.Second,
 }
 
 // Update updates a single subscription
 func (m *Manager) Update(sub *config.Subscription) error {
-	client := &http.Client{
-		Timeout: 30 * time.Second,
-	}
-	resp, err := client.Get(sub.URL)
+	resp, err := globalHTTPClient.Get(sub.URL)
 	if err != nil {
 		return err
 	}
@@ -80,6 +83,26 @@ func (m *Manager) AddSubscription(sub *config.Subscription) error {
 	return nil
 }
 
+// StartAutoUpdate starts automatic periodic subscription update
+func (m *Manager) StartAutoUpdate(ctx context.Context) {
+	if m.config.SubscriptionUpdateInterval <= 0 {
+		return // disabled
+	}
+	interval := time.Duration(m.config.SubscriptionUpdateInterval) * time.Hour
+	ticker := time.NewTicker(interval)
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				ticker.Stop()
+				return
+			case <-ticker.C:
+				m.UpdateAll()
+			}
+		}
+	}()
+}
+
 // RemoveSubscription removes a subscription
 func (m *Manager) RemoveSubscription(index int) {
 	if index >= 0 && index < len(m.config.Subscriptions) {
@@ -93,6 +116,21 @@ func (m *Manager) GetAllNodes() []*config.Node {
 	for _, sub := range m.config.Subscriptions {
 		if sub.Enabled {
 			nodes = append(nodes, sub.Nodes...)
+		}
+	}
+	return nodes
+}
+
+// GetAllNodesByGroup returns all nodes that belong to specific group from all enabled subscriptions
+func (m *Manager) GetAllNodesByGroup(group string) []*config.Node {
+	var nodes []*config.Node
+	for _, sub := range m.config.Subscriptions {
+		if sub.Enabled {
+			for _, node := range sub.Nodes {
+				if node.Group == group || group == "auto" || group == "" {
+					nodes = append(nodes, node)
+				}
+			}
 		}
 	}
 	return nodes

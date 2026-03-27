@@ -84,21 +84,40 @@
             <button class="btn btn-primary" onclick="selectBest()" style="margin-top: 15px;">自动选择最佳节点</button>
         </div>
 
+        <!-- 节点分组 -->
+        <div class="card">
+            <h2>节点分组</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>分组名称</th>
+                        <th>节点数</th>
+                        <th>当前选中</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="groupList">
+                </tbody>
+            </table>
+        </div>
+
         <!-- 节点列表 -->
         <div class="card">
             <h2>所有节点</h2>
             <button class="btn btn-primary" onclick="testAllNodes()" style="margin-bottom: 15px;">测试全部节点延迟</button>
             <table>
                 <thead>
-                    <tr>
-                        <th>名称</th>
-                        <th>类型</th>
-                        <th>服务器</th>
-                        <th>端口</th>
-                        <th>延迟</th>
-                        <th>状态</th>
-                        <th>操作</th>
-                    </tr>
+                <tr>
+                    <th>名称</th>
+                    <th>类型</th>
+                    <th>分组</th>
+                    <th>服务器</th>
+                    <th>端口</th>
+                    <th>延迟</th>
+                    <th>平均延迟</th>
+                    <th>状态</th>
+                    <th>操作</th>
+                </tr>
                 </thead>
                 <tbody id="nodeList">
                 </tbody>
@@ -150,17 +169,23 @@
             tbody.innerHTML = '';
             const current = await apiGet('/current');
 
-            nodes.forEach(node => {
+                nodes.forEach(node => {
                 const isCurrent = current && current.name === node.name;
                 const latencyClass = node.latency < 200 ? 'latency-good' : node.latency < 500 ? 'latency-medium' : 'latency-bad';
+                let avgLatencyClass = 'latency-bad';
+                if (node.averageLatency > 0) {
+                    avgLatencyClass = node.averageLatency < 200 ? 'latency-good' : node.averageLatency < 500 ? 'latency-medium' : 'latency-bad';
+                }
                 const row = document.createElement('tr');
                 if (isCurrent) row.className = 'current-node';
                 row.innerHTML = `
                     <td>${node.name}</td>
                     <td>${node.type}</td>
+                    <td>${node.group || '-'}</td>
                     <td>${node.server}</td>
                     <td>${node.port}</td>
                     <td class="${latencyClass}">${node.latency || '-'}ms</td>
+                    <td class="${avgLatencyClass}">${node.averageLatency ? node.averageLatency.toFixed(1) + 'ms' : '-'}</td>
                     <td>${node.available ? '<span class="status-badge status-active">可用</span>' : '<span class="status-badge status-inactive">不可用</span>'}</td>
                     <td><button class="btn" onclick="selectNode('${node.name}')">选择</button></td>
                 `;
@@ -209,9 +234,39 @@
         loadNodes();
         loadCurrent();
 
+        async function loadGroups() {
+            const groups = await apiGet('/groups');
+            const tbody = document.getElementById('groupList');
+            tbody.innerHTML = '';
+            groups.forEach(group => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${group.name} ${group.isAuto ? '(自动)' : ''}</td>
+                    <td>${group.nodes ? group.nodes.length : 0}</td>
+                    <td>${group.selected ? group.selected.name : '未选择'}</td>
+                    <td><button class="btn btn-primary" onclick="selectGroupBest('${group.name}')">选择最佳</button></td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        async function selectGroupBest(name) {
+            await apiPost(`/groups/${name}/select`, {});
+            await loadNodes();
+            await loadCurrent();
+            await loadGroups();
+        }
+
+        // Initial load
+        loadSubscriptions();
+        loadNodes();
+        loadCurrent();
+        loadGroups();
+
         setInterval(() => {
             loadNodes();
             loadCurrent();
+            loadGroups();
         }, 30000);
     </script>
 </body>

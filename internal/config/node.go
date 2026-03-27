@@ -22,7 +22,10 @@ type Node struct {
 	ALPN        []string          `json:"alpn,omitempty" yaml:"alpn,omitempty"`
 	FP          string            `json:"fingerprint,omitempty" yaml:"fingerprint,omitempty"`
 	Tag         string            `json:"tag,omitempty" yaml:"tag,omitempty"`
+	Group       string            `json:"group,omitempty" yaml:"group,omitempty"`
 	Latency     int64             `json:"latency" yaml:"-"` // 延迟，单位ms
+	LatencyHistory []int64        `json:"-" yaml:"-"`     // 历史延迟记录
+	AverageLatency float64        `json:"average_latency" yaml:"-"`
 	LastCheck   time.Time         `json:"last_check" yaml:"-"`
 	Available   bool              `json:"available" yaml:"-"`
 	Extra       map[string]string `json:"extra,omitempty" yaml:"extra,omitempty"`
@@ -39,12 +42,20 @@ type Subscription struct {
 
 // Config MCP 主配置
 type Config struct {
-	ListenAddr     string          `json:"listen_addr" yaml:"listen_addr"`
-	Subscriptions  []*Subscription `json:"subscriptions" yaml:"subscriptions"`
-	Rules          []*Rule         `json:"rules" yaml:"rules"`
-	EnableAutoSelect bool          `json:"enable_auto_select" yaml:"enable_auto_select"`
-	AutoSelectInterval int         `json:"auto_select_interval" yaml:"auto_select_interval"` // 单位分钟
-	SelectedGroup  string          `json:"selected_group" yaml:"selected_group"`
+	ListenAddr         string          `json:"listen_addr" yaml:"listen_addr"`
+	Subscriptions      []*Subscription `json:"subscriptions" yaml:"subscriptions"`
+	Groups             []*Group        `json:"groups" yaml:"groups"`
+	Rules              []*Rule         `json:"rules" yaml:"rules"`
+	EnableAuth         bool            `json:"enable_auth" yaml:"enable_auth"`
+	Username           string          `json:"username" yaml:"username"`
+	Password           string          `json:"password" yaml:"password"`
+	EnableAutoSelect   bool            `json:"enable_auto_select" yaml:"enable_auto_select"`
+	AutoSelectInterval int             `json:"auto_select_interval" yaml:"auto_select_interval"` // 单位分钟
+	SubscriptionUpdateInterval int    `json:"subscription_update_interval" yaml:"subscription_update_interval"` // 单位小时
+	SelectedGroup      string          `json:"selected_group" yaml:"selected_group"`
+	EnableHTTPS        bool            `json:"enable_https" yaml:"enable_https"`
+	CertFile           string          `json:"cert_file" yaml:"cert_file"`
+	KeyFile            string          `json:"key_file" yaml:"key_file"`
 }
 
 // Rule 分流规则

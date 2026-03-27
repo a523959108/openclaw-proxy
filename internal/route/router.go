@@ -1,6 +1,7 @@
 package route
 
 import (
+	"net"
 	"strings"
 
 	"openclaw-mcp/internal/config"
@@ -45,8 +46,12 @@ func (r *Router) matchRule(rule *config.Rule, domain string, ip string) bool {
 	case "domain-keyword":
 		return strings.Contains(strings.ToLower(domain), strings.ToLower(rule.Pattern))
 	case "ip-cidr":
-		// TODO: implement CIDR matching
-		return false
+		_, cidrNet, err := net.ParseCIDR(rule.Pattern)
+		if err != nil || ip == "" {
+			return false
+		}
+		ipAddr := net.ParseIP(ip)
+		return cidrNet.Contains(ipAddr)
 	default:
 		return false
 	}

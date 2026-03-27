@@ -44,9 +44,9 @@ func (m *MCPServer) Status(w http.ResponseWriter, r *http.Request) {
 		Available   int          `json:"available_nodes"`
 	}
 	current := m.selector.GetCurrent()
-	// TODO: count available nodes
+	available := m.selector.CountAvailableNodes()
 	json.NewEncoder(w).Encode(&StatusResponse{
 		CurrentNode: current,
-		Available:   0,
+		Available:   available,
 	})
 }

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 	"os"
 	"os/signal"
@@ -19,6 +20,10 @@ func main() {
 	if err != nil {
 		log.Printf("Warning: No config file found, using default: %v", err)
 		cfg = config.DefaultConfig()
+		// Save default config if not exists
+		if err := config.SaveConfig("config.yaml", cfg); err != nil {
+			log.Printf("Warning: Failed to save default config: %v", err)
+		}
 	}
 
 	// 订阅管理器
@@ -27,12 +32,18 @@ func main() {
 		log.Printf("Failed to update subscriptions: %v", err)
 	}
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Start auto update subscriptions
+	subManager.StartAutoUpdate(ctx)
+
 	// 测速服务
 	lightHouse := lighthouse.New(cfg)
-	go lightHouse.Start()
+	lightHouse.Start()
 
 	// 智能选择器
-	selector := selection.New(lightHouse, subManager)
+	selector := selection.New(cfg, lightHouse, subManager)
 	if cfg.EnableAutoSelect {
 		selector.StartAutoSelection()
 	}
@@ -48,10 +59,17 @@ func main() {
 		log.Println("Shutting down...")
 		lightHouse.Stop()
 		selector.StopAutoSelection()
+		cancel()
 		os.Exit(0)
 	}()
 
 	log.Printf("Openclaw MCP starting on %s", cfg.ListenAddr)
+	if cfg.EnableAuth {
+		log.Println("Authentication enabled")
+	}
+	if cfg.EnableHTTPS {
+		log.Println("HTTPS enabled")
+	}
 	if err := server.Start(); err != nil {
 		log.Fatalf("Server failed: %v", err)
 	}

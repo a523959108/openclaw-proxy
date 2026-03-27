@@ -1,20 +1,52 @@
 package config
 
+import (
+	"os"
+
+	"gopkg.in/yaml.v3"
+)
+
 // DefaultConfig returns the default configuration
 func DefaultConfig() *Config {
 	return &Config{
-		ListenAddr:         "0.0.0.0:9090",
-		Subscriptions:      []*Subscription{},
-		Rules:              []*Rule{},
-		EnableAutoSelect:   true,
-		AutoSelectInterval: 30, // 30 minutes
-		SelectedGroup:      "auto",
+		ListenAddr:                 "0.0.0.0:9090",
+		Subscriptions:              []*Subscription{},
+		Groups:                     []*Group{},
+		Rules:                      []*Rule{},
+		EnableAuth:                 false,
+		Username:                   "admin",
+		Password:                   "admin",
+		EnableAutoSelect:           true,
+		AutoSelectInterval:         30, // 30 minutes
+		SubscriptionUpdateInterval: 24, // 24 hours
+		SelectedGroup:              "auto",
+		EnableHTTPS:                false,
 	}
 }
 
 // LoadConfig loads configuration from file
 func LoadConfig(path string) (*Config, error) {
-	// Implementation will be added
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
 	cfg := DefaultConfig()
+	decoder := yaml.NewDecoder(file)
+	if err := decoder.Decode(cfg); err != nil {
+		return nil, err
+	}
+
 	return cfg, nil
+}
+
+// SaveConfig saves configuration to file
+func SaveConfig(path string, cfg *Config) error {
+	data, err := yaml.Marshal(cfg)
+	if err != nil {
+		return err
+	}
+
+	return os.WriteFile(path, data, 0644)
 }

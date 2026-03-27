@@ -61,6 +61,17 @@ func (l *Lighthouse) TestNode(node *config.Node) (int64, error) {
 
 	latency := time.Since(start).Milliseconds()
 	node.Latency = latency
+	// Keep last 5 latency measurements for average calculation
+	node.LatencyHistory = append(node.LatencyHistory, latency)
+	if len(node.LatencyHistory) > 5 {
+		node.LatencyHistory = node.LatencyHistory[1:]
+	}
+	// Calculate average latency
+	var sum int64
+	for _, lat := range node.LatencyHistory {
+		sum += lat
+	}
+	node.AverageLatency = float64(sum) / float64(len(node.LatencyHistory))
 	node.Available = true
 	node.LastCheck = time.Now()
 
