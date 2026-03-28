@@ -26,14 +26,13 @@ type Lighthouse struct {
 func New(cfg *config.Config, dnsResolver *dns.Resolver) *Lighthouse {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &Lighthouse{
-		config:  cfg,
-		ctx:     ctx,
-		cancelCtx: cancel,
-		testURL: "http://www.gstatic.com/generate_204",
-		timeout: 10 * time.Second,
+		config:      cfg,
+		ctx:         ctx,
+		cancelCtx:   cancel,
+		testURL:     "http://www.gstatic.com/generate_204",
+		timeout:     10 * time.Second,
 		dnsResolver: dnsResolver,
 	}
-}
 }
 
 // SetNodeSource sets the function to get all nodes for periodic testing
@@ -42,12 +41,12 @@ func (l *Lighthouse) SetNodeSource(nodeSource func() []*config.Node) {
 	go func() {
 		ticker := time.NewTicker(30 * time.Minute)
 		defer ticker.Stop()
-		
+
 		// Run initial test after 1 minute
 		time.Sleep(1 * time.Minute)
 		nodes := nodeSource()
 		l.TestAll(nodes)
-		
+
 		for {
 			select {
 			case <-l.ctx.Done():
