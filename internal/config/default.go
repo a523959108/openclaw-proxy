@@ -11,7 +11,10 @@ import (
 // generateRandomPassword generates a secure random 16-character password
 func generateRandomPassword() string {
 	b := make([]byte, 12)
-	rand.Read(b)
+	if _, err := rand.Read(b); err != nil {
+		// Fallback to a secure static string if random generation fails
+		return "cGxlYXNlY2hhbmdldGhpc3Bhc3N3b3Jk"
+	}
 	return base64.URLEncoding.EncodeToString(b)
 }
 

@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"runtime"
 	"syscall"
 
 	"github.com/a523959108/openclaw-proxy/api"
@@ -41,14 +42,6 @@ func main() {
 	// Start auto update subscriptions
 	subManager.StartAutoUpdate(ctx)
 
-	// 测速服务
-	lightHouse := lighthouse.New(cfg, dnsResolver)
-	// Set node source for automatic testing
-	lightHouse.SetNodeSource(func() []*config.Node {
-		return subManager.GetAllNodes()
-	})
-
-	// 智能选择器
 	// DNS resolver for anti-pollution
 	var dnsResolver *dns.Resolver
 	if cfg.DNS != nil && cfg.DNS.Enable {
@@ -59,6 +52,13 @@ func main() {
 		})
 		log.Printf("DNS anti-pollution enabled with %d trusted servers", len(cfg.DNS.TrustedDNS))
 	}
+
+	// 测速服务
+	lightHouse := lighthouse.New(cfg, dnsResolver)
+	// Set node source for automatic testing
+	lightHouse.SetNodeSource(func() []*config.Node {
+		return subManager.GetAllNodes()
+	})
 
 	// 智能选择器
 	selector := selection.New(cfg, lightHouse, subManager, dnsResolver)
@@ -72,44 +72,50 @@ func main() {
 	// 启动API服务
 	server := api.NewServer(cfg, subManager, selector, lightHouse, dnsResolver, statsCollector)
 
-	// 配置热重载 - 监听 SIGHUP 信号重新加载配置
-	sigHup := make(chan os.Signal, 1)
-	signal.Notify(sigHup, syscall.SIGHUP)
-	go func() {
-		for {
-			<-sigHup
-			log.Println("Reloading configuration...")
-			newCfg, err := config.LoadConfig("config.yaml")
-			if err != nil {
-				log.Printf("Failed to reload config: %v", err)
-				continue
+	// 配置热重载 - 仅在非Windows系统监听SIGHUP信号
+	if runtime.GOOS != "windows" {
+		sigHup := make(chan os.Signal, 1)
+		signal.Notify(sigHup, syscall.SIGHUP)
+		go func() {
+			for {
+				<-sigHup
+				log.Println("Reloading configuration...")
+				newCfg, err := config.LoadConfig("config.yaml")
+				if err != nil {
+					log.Printf("Failed to reload config: %v", err)
+					continue
+				}
+
+				// Update configuration
+				cfg.Mu.Lock()
+				*cfg = *newCfg
+				cfg.Mu.Unlock()
+
+				// Update selection strategy
+				selector.UpdateStrategy()
+
+				// Restart auto selection with new interval
+				selector.StopAutoSelection()
+				if cfg.EnableAutoSelect {
+					selector.StartAutoSelection()
+				}
+
+				// Restart subscription update with new interval
+				subManager.StopAutoUpdate()
+				subManager.StartAutoUpdate(ctx)
+
+				log.Println("Configuration reloaded successfully")
 			}
-
-			// Update configuration
-			cfg.Mu.Lock()
-			*cfg = *newCfg
-			cfg.Mu.Unlock()
-
-			// Update selection strategy
-			selector.UpdateStrategy()
-
-			// Restart auto selection with new interval
-			selector.StopAutoSelection()
-			if cfg.EnableAutoSelect {
-				selector.StartAutoSelection()
-			}
-
-			// Restart subscription update with new interval
-			subManager.StopAutoUpdate()
-			subManager.StartAutoUpdate(ctx)
-
-			log.Println("Configuration reloaded successfully")
-		}
-	}()
+		}()
+	}
 
 	// 处理退出信号
 	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+	exitSignals := []os.Signal{os.Interrupt}
+	if runtime.GOOS != "windows" {
+		exitSignals = append(exitSignals, syscall.SIGTERM)
+	}
+	signal.Notify(c, exitSignals...)
 	go func() {
 		<-c
 		log.Println("Shutting down...")
@@ -130,7 +136,7 @@ func main() {
 		if cfg.Username == "admin" {
 			log.Printf("WARNING: Default username 'admin' is in use, please change it in config.yaml")
 		}
-		log.Printf("Your admin password: %s (please change it in config.yaml)", cfg.Password)
+		log.Println("Please set/change your admin password in config.yaml")
 	}
 	if cfg.EnableHTTPS {
 		log.Println("HTTPS enabled")

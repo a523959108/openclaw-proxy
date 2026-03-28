@@ -11,14 +11,14 @@ import (
 
 // Resolver handles DNS resolution with pollution protection
 type Resolver struct {
-	trustedDNS  []string
-	client      *dns.Client
-	cache       map[string]*dnsCacheEntry
-	cacheMu     sync.RWMutex
-	cacheTTL    time.Duration
-	timeout     time.Duration
-	ctx         context.Context
-	cancel      context.CancelFunc
+	trustedDNS []string
+	client     *dns.Client
+	cache      map[string]*dnsCacheEntry
+	cacheMu    sync.RWMutex
+	cacheTTL   time.Duration
+	timeout    time.Duration
+	ctx        context.Context
+	cancel     context.CancelFunc
 }
 
 type dnsCacheEntry struct {
@@ -28,9 +28,9 @@ type dnsCacheEntry struct {
 
 // Config is DNS resolver configuration
 type Config struct {
-	TrustedDNS []string      `json:"trusted_dns" yaml:"trusted_dns"`
-	CacheTTL   int           `json:"cache_ttl" yaml:"cache_ttl"` // cache TTL in minutes
-	Timeout    int           `json:"timeout" yaml:"timeout"`     // timeout in seconds
+	TrustedDNS []string `json:"trusted_dns" yaml:"trusted_dns"`
+	CacheTTL   int      `json:"cache_ttl" yaml:"cache_ttl"` // cache TTL in minutes
+	Timeout    int      `json:"timeout" yaml:"timeout"`     // timeout in seconds
 }
 
 // DefaultConfig returns default DNS configuration
@@ -163,7 +163,7 @@ func (r *Resolver) parallelLookup(domain string) ([]net.IP, error) {
 	// Return the first successful result with overall timeout
 	var lastErr error
 	timeout := time.After(r.timeout)
-	
+
 	for i := 0; i < len(r.trustedDNS); i++ {
 		select {
 		case res := <-resultChan:
@@ -185,28 +185,38 @@ func (r *Resolver) parallelLookup(domain string) ([]net.IP, error) {
 }
 
 func (r *Resolver) queryDNS(dnsServer, domain string) ([]net.IP, error) {
-	m := new(dns.Msg)
-	m.SetQuestion(dns.Fqdn(domain), dns.TypeA)
-
-	resp, _, err := r.client.Exchange(m, dnsServer)
-	if err != nil {
-		return nil, err
-	}
-
-	if resp.Rcode != dns.RcodeSuccess {
-		return nil, nil
-	}
-
 	var ips []net.IP
-	for _, ans := range resp.Answer {
-		switch a := ans.(type) {
-		case *dns.A:
-			ips = append(ips, a.A)
-		case *dns.AAAA:
-			ips = append(ips, a.AAAA)
+
+	// Query A records (IPv4)
+	mA := new(dns.Msg)
+	mA.SetQuestion(dns.Fqdn(domain), dns.TypeA)
+	respA, _, errA := r.client.Exchange(mA, dnsServer)
+	if errA == nil && respA.Rcode == dns.RcodeSuccess {
+		for _, ans := range respA.Answer {
+			if a, ok := ans.(*dns.A); ok {
+				ips = append(ips, a.A)
+			}
 		}
 	}
 
+	// Query AAAA records (IPv6)
+	mAAAA := new(dns.Msg)
+	mAAAA.SetQuestion(dns.Fqdn(domain), dns.TypeAAAA)
+	respAAAA, _, errAAAA := r.client.Exchange(mAAAA, dnsServer)
+	if errAAAA == nil && respAAAA.Rcode == dns.RcodeSuccess {
+		for _, ans := range respAAAA.Answer {
+			if a, ok := ans.(*dns.AAAA); ok {
+				ips = append(ips, a.AAAA)
+			}
+		}
+	}
+
+	// If both queries failed, return error
+	if errA != nil && errAAAA != nil {
+		return nil, errA
+	}
+
+	// If no records found but queries succeeded, return empty slice
 	return ips, nil
 }
 
