@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"github.com/a523959108/openclaw-proxy/internal/config"
+	"github.com/a523959108/openclaw-proxy/internal/geoip"
 )
 
 // Router handles route matching
@@ -63,7 +64,7 @@ func (r *Router) Match(domain string, ip net.IP) string {
 func (r *Router) matchRule(rule *config.Rule, domain string, ip net.IP) bool {
 	// Normalize rule type
 	ruleType := strings.ToLower(rule.Type)
-	
+
 	switch ruleType {
 	case "domain":
 		return strings.EqualFold(domain, rule.Pattern)
@@ -90,9 +91,14 @@ func (r *Router) matchRule(rule *config.Rule, domain string, ip net.IP) bool {
 		}
 		return cidrNet.Contains(ip)
 	case "geoip":
-		// TODO: implement GeoIP matching, currently not supported
-		// Return false to match next rule
-		return false
+		if ip == nil {
+			return false
+		}
+		countryCode, err := geoip.GetInstance().LookupCountry(ip)
+		if err != nil {
+			return false
+		}
+		return strings.EqualFold(countryCode, strings.TrimPrefix(rule.Pattern, "!"))
 	case "src-ip-cidr":
 		// Source IP matching, not applicable here
 		return false
@@ -136,6 +142,19 @@ func (r *Router) LoadRulesFromClashYAML(rawRules []string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
+	// Initialize GeoIP if there are GEOIP rules
+	hasGeoIP := false
+	for _, rawRule := range rawRules {
+		if strings.Contains(strings.ToLower(rawRule), "geoip") {
+			hasGeoIP = true
+			break
+		}
+	}
+	if hasGeoIP {
+		// Initialize GeoIP instance in background
+		go geoip.GetInstance()
+	}
+
 	// Parse Clash-format rules
 	for _, rawRule := range rawRules {
 		rawRule = strings.TrimSpace(rawRule)
@@ -150,7 +169,7 @@ func (r *Router) LoadRulesFromClashYAML(rawRules []string) error {
 		ruleType := strings.TrimSpace(parts[0])
 		pattern := strings.TrimSpace(parts[1])
 		target := strings.TrimSpace(parts[2])
-		
+
 		rule := &config.Rule{
 			Type:    ruleType,
 			Pattern: pattern,

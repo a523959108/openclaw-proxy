@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -106,7 +107,9 @@ func (m *Manager) StartAutoUpdate(ctx context.Context) {
 				ticker.Stop()
 				return
 			case <-ticker.C:
-				m.UpdateAll()
+				if err := m.UpdateAll(); err != nil {
+					log.Printf("Failed to update subscriptions: %v", err)
+				}
 			}
 		}
 	}()
@@ -238,19 +241,22 @@ func parseShadowsocks(link string) (*config.Node, error) {
 	if len(hostPortParts) != 2 {
 		return nil, fmt.Errorf("invalid ss server:port")
 	}
-	port, _ := strconv.Atoi(hostPortParts[1])
+	port, err := strconv.Atoi(hostPortParts[1])
+	if err != nil || port <= 0 || port > 65535 {
+		return nil, fmt.Errorf("invalid port: %s", hostPortParts[1])
+	}
 
 	if name == "" {
 		name = fmt.Sprintf("%s:%d", hostPortParts[0], port)
 	}
 
 	return &config.Node{
-		Name:     name,
-		Type:     "ss",
-		Server:   hostPortParts[0],
-		Port:     port,
-		Password: parts[1],
-		Security: parts[0],
+		Name:      name,
+		Type:      "ss",
+		Server:    hostPortParts[0],
+		Port:      port,
+		Password:  parts[1],
+		Security:  parts[0],
 		Available: true,
 	}, nil
 }
@@ -292,17 +298,17 @@ func parseVmess(link string) (*config.Node, error) {
 	tls := vmess.TLS == "tls"
 
 	return &config.Node{
-		Name:      vmess.PS,
-		Type:      "vmess",
-		Server:    vmess.Add,
-		Port:      port,
-		UUID:      vmess.ID,
-		AlterID:   aid,
-		Security:  "auto",
-		Network:   vmess.Net,
-		Path:      vmess.Path,
-		Host:      vmess.Host,
-		TLS:       tls,
+		Name:       vmess.PS,
+		Type:       "vmess",
+		Server:     vmess.Add,
+		Port:       port,
+		UUID:       vmess.ID,
+		AlterID:    aid,
+		Security:   "auto",
+		Network:    vmess.Net,
+		Path:       vmess.Path,
+		Host:       vmess.Host,
+		TLS:        tls,
 		ServerName: vmess.SNI,
 		Available:  true,
 	}, nil
@@ -327,17 +333,17 @@ func parseVLESS(link string) (*config.Node, error) {
 	tls := security == "tls"
 
 	return &config.Node{
-		Name:      name,
-		Type:      "vless",
-		Server:    parsedURL.Hostname(),
-		Port:      port,
-		UUID:      uuid,
-		Security:  security,
-		Path:      path,
-		Host:      host,
+		Name:       name,
+		Type:       "vless",
+		Server:     parsedURL.Hostname(),
+		Port:       port,
+		UUID:       uuid,
+		Security:   security,
+		Path:       path,
+		Host:       host,
 		ServerName: sni,
-		TLS:       tls,
-		Available: true,
+		TLS:        tls,
+		Available:  true,
 	}, nil
 }
 

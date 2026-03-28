@@ -1,10 +1,19 @@
 package config
 
 import (
+	"crypto/rand"
+	"encoding/base64"
 	"os"
 
 	"gopkg.in/yaml.v3"
 )
+
+// generateRandomPassword generates a secure random 16-character password
+func generateRandomPassword() string {
+	b := make([]byte, 12)
+	rand.Read(b)
+	return base64.URLEncoding.EncodeToString(b)
+}
 
 // DefaultConfig returns the default configuration
 func DefaultConfig() *Config {
@@ -16,7 +25,7 @@ func DefaultConfig() *Config {
 		RuleStrings:                []string{},
 		EnableAuth:                 false,
 		Username:                   "admin",
-		Password:                   "admin",
+		Password:                   generateRandomPassword(),
 		EnableAutoSelect:           true,
 		AutoSelectInterval:         30, // 30 minutes
 		SubscriptionUpdateInterval: 24, // 24 hours
@@ -24,11 +33,11 @@ func DefaultConfig() *Config {
 		SelectionStrategy:          "latency", // default to latency-based selection
 		EnableHTTPS:                false,
 		DNS: &DNSConfig{
-			Enable:          false,
-			TrustedDNS:      []string{"8.8.8.8:53", "1.1.1.1:53"},
-			CacheTTL:        30,
-			Timeout:         5,
-			CheckPollution:  true,
+			Enable:         false,
+			TrustedDNS:     []string{"223.5.5.5:53", "114.114.114.114:53", "8.8.8.8:53", "1.1.1.1:53"},
+			CacheTTL:       30,
+			Timeout:        5,
+			CheckPollution: true,
 		},
 	}
 }
@@ -57,5 +66,5 @@ func SaveConfig(path string, cfg *Config) error {
 		return err
 	}
 
-	return os.WriteFile(path, data, 0644)
+	return os.WriteFile(path, data, 0600)
 }

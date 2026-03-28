@@ -7,13 +7,14 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/a523959108/openclaw-proxy/api"
 	"github.com/a523959108/openclaw-proxy/internal/config"
 	"github.com/a523959108/openclaw-proxy/internal/dns"
-	"github.com/a523959108/openclaw-proxy/internal/subscription"
+	"github.com/a523959108/openclaw-proxy/internal/geoip"
 	"github.com/a523959108/openclaw-proxy/internal/lighthouse"
 	"github.com/a523959108/openclaw-proxy/internal/selection"
 	"github.com/a523959108/openclaw-proxy/internal/stats"
-	"github.com/a523959108/openclaw-proxy/api"
+	"github.com/a523959108/openclaw-proxy/internal/subscription"
 )
 
 func main() {
@@ -41,8 +42,11 @@ func main() {
 	subManager.StartAutoUpdate(ctx)
 
 	// 测速服务
-	lightHouse := lighthouse.New(cfg)
-	lightHouse.Start()
+	lightHouse := lighthouse.New(cfg, dnsResolver)
+	// Set node source for automatic testing
+	lightHouse.SetNodeSource(func() []*config.Node {
+		return subManager.GetAllNodes()
+	})
 
 	// 智能选择器
 	// DNS resolver for anti-pollution
@@ -82,7 +86,9 @@ func main() {
 			}
 
 			// Update configuration
+			cfg.Mu.Lock()
 			*cfg = *newCfg
+			cfg.Mu.Unlock()
 
 			// Update selection strategy
 			selector.UpdateStrategy()
@@ -107,6 +113,7 @@ func main() {
 	go func() {
 		<-c
 		log.Println("Shutting down...")
+		geoip.GetInstance().Stop()
 		if dnsResolver != nil {
 			dnsResolver.Stop()
 		}
@@ -120,12 +127,25 @@ func main() {
 	log.Printf("Openclaw MCP starting on %s", cfg.ListenAddr)
 	if cfg.EnableAuth {
 		log.Println("Authentication enabled")
+		if cfg.Username == "admin" {
+			log.Printf("WARNING: Default username 'admin' is in use, please change it in config.yaml")
+		}
+		log.Printf("Your admin password: %s (please change it in config.yaml)", cfg.Password)
 	}
 	if cfg.EnableHTTPS {
 		log.Println("HTTPS enabled")
 	}
 	log.Println("Config hot reload enabled via SIGHUP signal")
 	if err := server.Start(); err != nil {
-		log.Fatalf("Server failed: %v", err)
+		log.Printf("Server failed: %v", err)
+		// Cleanup resources
+		if dnsResolver != nil {
+			dnsResolver.Stop()
+		}
+		lightHouse.Stop()
+		selector.StopAutoSelection()
+		subManager.StopAutoUpdate()
+		cancel()
+		os.Exit(1)
 	}
 }

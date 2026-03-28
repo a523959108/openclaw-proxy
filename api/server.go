@@ -18,13 +18,13 @@ import (
 
 // Server is the API server
 type Server struct {
-	config     *config.Config
-	subManager *subscription.Manager
-	selector   *selection.Selector
-	lighthouse *lighthouse.Lighthouse
-	dnsResolver *dns.Resolver
+	config         *config.Config
+	subManager     *subscription.Manager
+	selector       *selection.Selector
+	lighthouse     *lighthouse.Lighthouse
+	dnsResolver    *dns.Resolver
 	statsCollector *stats.StatsCollector
-	router     *chi.Mux
+	router         *chi.Mux
 }
 
 // NewServer creates a new API server
@@ -205,7 +205,35 @@ func (s *Server) UpdateConfig(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+
+	s.config.Mu.Lock()
+	oldInterval := s.config.SubscriptionUpdateInterval
+	oldAutoSelect := s.config.EnableAutoSelect
+	oldAutoSelectInterval := s.config.AutoSelectInterval
+	oldStrategy := s.config.SelectionStrategy
 	*s.config = newConfig
+	s.config.Mu.Unlock()
+
+	// Update related services
+	// Restart subscription auto update if interval changed
+	if oldInterval != newConfig.SubscriptionUpdateInterval {
+		s.subManager.StopAutoUpdate()
+		s.subManager.StartAutoUpdate(r.Context())
+	}
+
+	// Restart auto selection if settings changed
+	if oldAutoSelect != newConfig.EnableAutoSelect || oldAutoSelectInterval != newConfig.AutoSelectInterval {
+		s.selector.StopAutoSelection()
+		if newConfig.EnableAutoSelect {
+			s.selector.StartAutoSelection()
+		}
+	}
+
+	// Update selection strategy if changed
+	if oldStrategy != newConfig.SelectionStrategy {
+		s.selector.UpdateStrategy()
+	}
+
 	if err := config.SaveConfig("config.yaml", s.config); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
