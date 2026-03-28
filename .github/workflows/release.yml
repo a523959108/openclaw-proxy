@@ -1,5 +1,9 @@
 name: Release
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  GO_VERSION: '1.25'
+
 on:
   push:
     tags:
@@ -17,7 +21,7 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v5
       with:
-        go-version: '1.21'
+        go-version: ${{ env.GO_VERSION }}
         cache: true
 
     - name: Download dependencies
@@ -41,7 +45,7 @@ jobs:
         CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" -o openclaw-proxy-darwin-arm64 ./cmd/
 
     - name: Upload release assets
-      uses: softprops/action-gh-release@v1
+      uses: softprops/action-gh-release@v2
       with:
         files: |
           openclaw-proxy-linux-amd64
